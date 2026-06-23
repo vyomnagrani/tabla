@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Tabla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">Browser Sequencer</p>
+        <h1>Online Tabla</h1>
+        <p class="subtitle">Build your own loop by dropping tabla hits onto beats.</p>
+      </header>
+
+      <section class="panel setup-panel">
+        <h2>1. Choose Loop Length</h2>
+        <div class="setup-row">
+          <label for="loopLength">Beats in loop</label>
+          <select id="loopLength">
+            <option value="4">4</option>
+            <option value="8">8</option>
+            <option value="12">12</option>
+            <option value="16" selected>16</option>
+          </select>
+          <button id="buildPattern" class="btn btn-primary">Create Pattern</button>
+        </div>
+      </section>
+
+      <section id="sequencer" class="panel hidden" aria-live="polite">
+        <h2>2. Arrange Beats</h2>
+
+        <div class="palette" id="palette"></div>
+
+        <div class="controls">
+          <div class="tempo-block">
+            <span class="control-title">Tempo</span>
+            <div class="tempo-row">
+              <button id="tempoDown" class="btn btn-subtle" type="button">-</button>
+              <input id="tempo" type="range" min="30" max="360" value="60" />
+              <button id="tempoUp" class="btn btn-subtle" type="button">+</button>
+            </div>
+            <div class="tempo-readout">
+              <span><strong id="bpmValue">60</strong> BPM</span>
+              <span><strong id="bpsValue">1.00</strong> BPS</span>
+            </div>
+          </div>
+
+          <div class="playback-buttons">
+            <button id="play" class="btn btn-primary" type="button">Play</button>
+            <button id="stop" class="btn" type="button" disabled>Stop</button>
+            <button id="clear" class="btn" type="button">Clear Pattern</button>
+          </div>
+        </div>
+
+        <p class="tip">Drag a hit onto a beat cell. Click a filled beat to clear it.</p>
+        <div id="grid" class="grid"></div>
+      </section>
+    </main>
+
+    <script src="/js/app.js" type="module"></script>
+  </body>
+</html>
