@@ -1,15 +1,15 @@
 const SOUND_FILES = {
-  Full: "/assets/audio/tabla-single-hit-full.wav",
+  Hollow: "/assets/audio/tabla-single-hit-hollow.wav",
   High: "/assets/audio/tabla-single-hit-high.wav",
   Low: "/assets/audio/tabla-single-hit-low.wav",
-  Hollow: "/assets/audio/tabla-single-hit-hollow.wav"
+  Full: "/assets/audio/tabla-single-hit-full.wav"
 };
-
-const MAX_PLAYBACK_RATE = 4;
 
 const state = {
   bpm: 60,
   pattern: [],
+  loopLength: 16,
+  savedBeats: [],
   isPlaying: false,
   currentBeat: 0,
   nextBeatAt: 0,
@@ -20,7 +20,10 @@ const state = {
 
 const els = {
   loopLength: document.getElementById("loopLength"),
+  loopLengthValue: document.getElementById("loopLengthValue"),
   buildPattern: document.getElementById("buildPattern"),
+  savedBeatSelect: document.getElementById("savedBeatSelect"),
+  loadSaved: document.getElementById("loadSaved"),
   sequencer: document.getElementById("sequencer"),
   palette: document.getElementById("palette"),
   grid: document.getElementById("grid"),
@@ -31,7 +34,10 @@ const els = {
   tempoDown: document.getElementById("tempoDown"),
   play: document.getElementById("play"),
   stop: document.getElementById("stop"),
-  clear: document.getElementById("clear")
+  clear: document.getElementById("clear"),
+  beatName: document.getElementById("beatName"),
+  saveBeat: document.getElementById("saveBeat"),
+  savedTableBody: document.getElementById("savedTableBody")
 };
 
 function beatDurationMs() {
@@ -42,6 +48,12 @@ function updateTempoDisplay() {
   els.bpmValue.textContent = String(state.bpm);
   els.bpsValue.textContent = (state.bpm / 60).toFixed(2);
   els.tempo.value = String(state.bpm);
+}
+
+function updateLoopLengthDisplay() {
+  state.loopLength = Number(els.loopLength.value);
+  els.loopLengthValue.textContent = String(state.loopLength);
+  els.loopLength.value = String(state.loopLength);
 }
 
 function createPalette() {
@@ -66,11 +78,40 @@ function createPalette() {
 }
 
 function createPattern() {
-  const length = Number(els.loopLength.value);
+  const length = state.loopLength;
   state.pattern = Array.from({ length }, () => null);
   state.currentBeat = 0;
   renderGrid();
   els.sequencer.classList.remove("hidden");
+}
+
+function renderSavedList() {
+  if (!state.savedBeats.length) {
+    els.savedBeatSelect.innerHTML = "<option value=''>No saved beats</option>";
+    els.savedBeatSelect.disabled = true;
+    els.savedTableBody.innerHTML = "<tr><td colspan='3' class='saved-empty'>No saved beats yet.</td></tr>";
+    return;
+  }
+
+  els.savedBeatSelect.disabled = false;
+  els.savedBeatSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select saved beat";
+  els.savedBeatSelect.appendChild(placeholder);
+
+  state.savedBeats.forEach((beat) => {
+    const option = document.createElement("option");
+    option.value = beat.id;
+    option.textContent = beat.name;
+    els.savedBeatSelect.appendChild(option);
+  });
+
+  els.savedTableBody.innerHTML = state.savedBeats
+    .map((beat) => {
+      return `<tr><td>${beat.name}</td><td>${beat.loopLength}</td><td>${beat.bpm} BPM</td></tr>`;
+    })
+    .join("");
 }
 
 function renderGrid(activeBeat = -1) {
@@ -150,17 +191,7 @@ async function ensureAudioReady() {
   state.audioBuffers = Object.fromEntries(entries);
 }
 
-function calcPlaybackRate(bufferDurationSec, beatDurationSec) {
-  if (!beatDurationSec || beatDurationSec <= 0) {
-    return 1;
-  }
-
-  const minimumRateToFit = bufferDurationSec / beatDurationSec;
-  const rawRate = Math.max(1, minimumRateToFit);
-  return Math.min(MAX_PLAYBACK_RATE, rawRate);
-}
-
-function playSound(soundName, beatDurationSec) {
+function playSound(soundName) {
   const buffer = state.audioBuffers[soundName];
   if (!buffer || !state.audioContext) {
     return;
@@ -168,7 +199,7 @@ function playSound(soundName, beatDurationSec) {
 
   const source = state.audioContext.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = calcPlaybackRate(buffer.duration, beatDurationSec);
+  source.playbackRate.value = 1;
 
   const gain = state.audioContext.createGain();
   gain.gain.value = 0.95;
@@ -207,7 +238,7 @@ function scheduleLoop() {
     renderGrid(beatIndex);
 
     if (assigned) {
-      playSound(assigned, beatMs / 1000);
+      playSound(assigned);
     }
 
     state.currentBeat = (beatIndex + 1) % state.pattern.length;
@@ -246,10 +277,80 @@ function setTempo(nextBpm) {
 async function previewSound(soundName) {
   try {
     await ensureAudioReady();
-    playSound(soundName, beatDurationMs() / 1000);
+    playSound(soundName);
   } catch (error) {
     console.error(error);
   }
+}
+
+async function loadSavedBeats() {
+  const response = await fetch("/api/saved-beats");
+  if (!response.ok) {
+    throw new Error("Could not load saved beats.");
+  }
+
+  const payload = await response.json();
+  state.savedBeats = Array.isArray(payload.items) ? payload.items : [];
+  renderSavedList();
+}
+
+async function saveCurrentBeat() {
+  const name = els.beatName.value.trim();
+  if (!name) {
+    alert("Please provide a beat name before saving.");
+    return;
+  }
+
+  if (!state.pattern.length) {
+    alert("Create a beat pattern first.");
+    return;
+  }
+
+  const response = await fetch("/api/saved-beats", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      loopLength: state.pattern.length,
+      bpm: state.bpm,
+      pattern: state.pattern
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not save beat.");
+  }
+
+  const payload = await response.json();
+  state.savedBeats = Array.isArray(payload.items) ? payload.items : [];
+  // Re-read from disk-backed API so table and load list always reflect persisted state.
+  await loadSavedBeats();
+  els.beatName.value = "";
+  renderSavedList();
+}
+
+function applySavedBeat(beatId) {
+  const selected = state.savedBeats.find((beat) => beat.id === beatId);
+  if (!selected) {
+    return;
+  }
+
+  if (state.isPlaying) {
+    stopPlayback();
+  }
+
+  state.loopLength = Math.max(1, Math.min(16, Number(selected.loopLength) || 1));
+  state.pattern = Array.from({ length: state.loopLength }, (_, index) => {
+    const value = selected.pattern?.[index] ?? null;
+    return SOUND_FILES[value] ? value : null;
+  });
+  state.bpm = Math.max(30, Math.min(360, Number(selected.bpm) || 60));
+  updateLoopLengthDisplay();
+  updateTempoDisplay();
+  renderGrid();
+  els.sequencer.classList.remove("hidden");
 }
 
 function wireEvents() {
@@ -257,7 +358,14 @@ function wireEvents() {
     if (state.isPlaying) {
       stopPlayback();
     }
+    state.loopLength = Number(els.loopLength.value);
+    updateLoopLengthDisplay();
     createPattern();
+  });
+
+  els.loopLength.addEventListener("input", (event) => {
+    state.loopLength = Number(event.target.value);
+    updateLoopLengthDisplay();
   });
 
   els.play.addEventListener("click", async () => {
@@ -283,6 +391,23 @@ function wireEvents() {
   els.tempoUp.addEventListener("click", () => setTempo(state.bpm + 5));
   els.tempoDown.addEventListener("click", () => setTempo(state.bpm - 5));
 
+  els.saveBeat.addEventListener("click", async () => {
+    try {
+      await saveCurrentBeat();
+    } catch (error) {
+      console.error(error);
+      alert("Unable to save beat right now.");
+    }
+  });
+
+  els.loadSaved.addEventListener("click", () => {
+    const beatId = els.savedBeatSelect.value;
+    if (!beatId) {
+      return;
+    }
+    applySavedBeat(beatId);
+  });
+
   window.addEventListener("beforeunload", () => {
     if (state.schedulerTimer) {
       clearTimeout(state.schedulerTimer);
@@ -290,11 +415,18 @@ function wireEvents() {
   });
 }
 
-function init() {
+async function init() {
   updateTempoDisplay();
+  updateLoopLengthDisplay();
   createPalette();
   wireEvents();
   createPattern();
+  try {
+    await loadSavedBeats();
+  } catch (error) {
+    console.error(error);
+    renderSavedList();
+  }
 }
 
 init();

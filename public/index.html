@@ -24,13 +24,11 @@
         <h2>1. Choose Loop Length</h2>
         <div class="setup-row">
           <label for="loopLength">Beats in loop</label>
-          <select id="loopLength">
-            <option value="4">4</option>
-            <option value="8">8</option>
-            <option value="12">12</option>
-            <option value="16" selected>16</option>
-          </select>
+          <input id="loopLength" type="range" min="1" max="16" value="16" />
+          <span class="loop-readout"><strong id="loopLengthValue">16</strong> beats</span>
           <button id="buildPattern" class="btn btn-primary">Create Pattern</button>
+          <select id="savedBeatSelect" class="saved-select"></select>
+          <button id="loadSaved" class="btn" type="button">Load Saved Beat</button>
         </div>
       </section>
 
@@ -60,11 +58,35 @@
           </div>
         </div>
 
+        <div class="save-controls">
+          <label for="beatName">Beat name</label>
+          <input id="beatName" type="text" placeholder="My odd groove" maxlength="80" />
+          <button id="saveBeat" class="btn btn-primary" type="button">Save</button>
+        </div>
+
         <p class="tip">Drag a hit onto a beat cell. Click a filled beat to clear it.</p>
         <div id="grid" class="grid"></div>
+
+        <section class="saved-panel">
+          <h3>Saved beats</h3>
+          <table class="saved-table" id="savedTable">
+            <thead>
+              <tr>
+                <th>Beat name</th>
+                <th>Beats in loop</th>
+                <th>Tempo</th>
+              </tr>
+            </thead>
+            <tbody id="savedTableBody">
+              <tr>
+                <td colspan="3" class="saved-empty">No saved beats yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
       </section>
     </main>
 
-    <script src="/js/app.js" type="module"></script>
+    <script src="/js/app.js?v=20260625" type="module"></script>
   </body>
 </html>
