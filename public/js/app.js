@@ -89,7 +89,7 @@ function renderSavedList() {
   if (!state.savedBeats.length) {
     els.savedBeatSelect.innerHTML = "<option value=''>No saved beats</option>";
     els.savedBeatSelect.disabled = true;
-    els.savedTableBody.innerHTML = "<tr><td colspan='3' class='saved-empty'>No saved beats yet.</td></tr>";
+    els.savedTableBody.innerHTML = "<tr><td colspan='4' class='saved-empty'>No saved beats yet.</td></tr>";
     return;
   }
 
@@ -109,9 +109,38 @@ function renderSavedList() {
 
   els.savedTableBody.innerHTML = state.savedBeats
     .map((beat) => {
-      return `<tr><td>${beat.name}</td><td>${beat.loopLength}</td><td>${beat.bpm} BPM</td></tr>`;
+      return `
+        <tr>
+          <td>${escapeHtml(beat.name)}</td>
+          <td>${beat.loopLength}</td>
+          <td>${beat.bpm} BPM</td>
+          <td>
+            <button
+              type="button"
+              class="icon-btn"
+              data-action="delete-beat"
+              data-beat-id="${beat.id}"
+              aria-label="Delete ${escapeHtml(beat.name)}"
+              title="Delete"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h2v9H7V9zm4 0h2v9h-2V9zm4 0h2v9h-2V9zM6 21h12l1-13H5l1 13z"></path>
+              </svg>
+            </button>
+          </td>
+        </tr>
+      `;
     })
     .join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function renderGrid(activeBeat = -1) {
@@ -265,7 +294,7 @@ async function startPlayback() {
 }
 
 function setTempo(nextBpm) {
-  state.bpm = Math.max(30, Math.min(360, Math.round(nextBpm)));
+  state.bpm = Math.max(30, Math.min(960, Math.round(nextBpm)));
   updateTempoDisplay();
 
   if (state.isPlaying) {
@@ -325,9 +354,23 @@ async function saveCurrentBeat() {
 
   const payload = await response.json();
   state.savedBeats = Array.isArray(payload.items) ? payload.items : [];
-  // Re-read from disk-backed API so table and load list always reflect persisted state.
+  // Re-read from API so table and load list always reflect persisted state.
   await loadSavedBeats();
   els.beatName.value = "";
+  renderSavedList();
+}
+
+async function deleteSavedBeat(beatId) {
+  const response = await fetch(`/api/saved-beats/${encodeURIComponent(beatId)}`, {
+    method: "DELETE"
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not delete beat.");
+  }
+
+  const payload = await response.json();
+  state.savedBeats = Array.isArray(payload.items) ? payload.items : [];
   renderSavedList();
 }
 
@@ -406,6 +449,33 @@ function wireEvents() {
       return;
     }
     applySavedBeat(beatId);
+  });
+
+  els.savedTableBody.addEventListener("click", async (event) => {
+    const target = event.target.closest("[data-action='delete-beat']");
+    if (!target) {
+      return;
+    }
+
+    const beatId = target.getAttribute("data-beat-id");
+    if (!beatId) {
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete this saved beat?");
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteSavedBeat(beatId);
+      if (els.savedBeatSelect.value === beatId) {
+        els.savedBeatSelect.value = "";
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Unable to delete beat right now.");
+    }
   });
 
   window.addEventListener("beforeunload", () => {

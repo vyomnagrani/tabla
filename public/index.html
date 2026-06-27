@@ -15,7 +15,6 @@
   <body>
     <main class="app-shell">
       <header class="hero">
-        <p class="eyebrow">Browser Sequencer</p>
         <h1>Online Tabla</h1>
         <p class="subtitle">Build your own loop by dropping tabla hits onto beats.</p>
       </header>
@@ -27,8 +26,8 @@
           <input id="loopLength" type="range" min="1" max="16" value="16" />
           <span class="loop-readout"><strong id="loopLengthValue">16</strong> beats</span>
           <button id="buildPattern" class="btn btn-primary">Create Pattern</button>
-          <select id="savedBeatSelect" class="saved-select"></select>
           <button id="loadSaved" class="btn" type="button">Load Saved Beat</button>
+          <select id="savedBeatSelect" class="saved-select"></select>
         </div>
       </section>
 
@@ -42,7 +41,7 @@
             <span class="control-title">Tempo</span>
             <div class="tempo-row">
               <button id="tempoDown" class="btn btn-subtle" type="button">-</button>
-              <input id="tempo" type="range" min="30" max="360" value="60" />
+              <input id="tempo" type="range" min="30" max="960" value="60" />
               <button id="tempoUp" class="btn btn-subtle" type="button">+</button>
             </div>
             <div class="tempo-readout">
@@ -75,11 +74,12 @@
                 <th>Beat name</th>
                 <th>Beats in loop</th>
                 <th>Tempo</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="savedTableBody">
               <tr>
-                <td colspan="3" class="saved-empty">No saved beats yet.</td>
+                <td colspan="4" class="saved-empty">No saved beats yet.</td>
               </tr>
             </tbody>
           </table>
@@ -87,6 +87,6 @@
       </section>
     </main>
 
-    <script src="/js/app.js?v=20260625" type="module"></script>
+    <script src="/js/app.js?v=20260627" type="module"></script>
   </body>
 </html>
